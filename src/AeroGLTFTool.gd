@@ -15,6 +15,7 @@ const ERROR_BACKEND_FAILED := "backend_failed"
 
 const SUPPORTED_CONTAINERS := ["gltf", "glb"]
 const DEFAULT_BACKEND_CLASS_NAMES := [
+	"AeroVendorGodotGLTFBackendAdapter",
 	"AeroVendorGodotGLTF",
 	"AeroVendorGodotGLTFManager",
 ]

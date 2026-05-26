@@ -1,5 +1,9 @@
 extends GutTest
 
+const PACKAGED_FIXTURE_PATH := "res://fixtures/models/alien-planet.glb"
+const EXTERNAL_FIXTURE_DIR := "user://gltf-fixtures"
+const EXTERNAL_FIXTURE_PATH := "user://gltf-fixtures/alien-planet.glb"
+
 class FakeRuntimeBackend:
 	extends RefCounted
 
@@ -12,6 +16,12 @@ class FakeRuntimeBackend:
 	func load_scene_bundle(request: Dictionary) -> Dictionary:
 		last_request = request.duplicate(true)
 		return _next_result
+
+func before_all() -> void:
+	assert_true(FileAccess.file_exists(PACKAGED_FIXTURE_PATH), "Packaged GLB fixture should exist in the tool testbed")
+
+func after_each() -> void:
+	_cleanup_external_fixture_dir()
 
 func test_repo_identity_is_gltf_specific() -> void:
 	var tool := AeroGLTFTool.new()
@@ -90,3 +100,85 @@ func test_load_scene_reports_backend_failure_cleanly() -> void:
 	assert_eq(result.error_code, "vendor_requires_imported_resource", "Facade should preserve backend-specific error codes for higher-level mapping")
 	assert_true(result.recoverable, "Facade should preserve recoverability")
 	assert_eq(result.details.resource_path, "", "Facade should preserve backend details for higher-level error mapping")
+
+func test_load_scene_from_packaged_glb_fixture_uses_default_vendor_adapter() -> void:
+	var tool := AeroGLTFTool.new()
+	tool.clear_runtime_backend()
+
+	var result: Dictionary = tool.load_scene_from_path(PACKAGED_FIXTURE_PATH)
+
+	assert_true(result.get("ok", false), "Facade should load the packaged GLB fixture through the default vendor adapter")
+	if not bool(result.get("ok", false)):
+		return
+	assert_eq(result.get("asset_path", ""), PACKAGED_FIXTURE_PATH, "Facade should preserve the packaged request path")
+	assert_eq(result.get("resource_path", ""), PACKAGED_FIXTURE_PATH, "Packaged GLB should round-trip as a resource path")
+	assert_eq(result.get("format", ""), "glb", "Packaged fixture should resolve as GLB")
+	assert_true(result.get("scene_root", null) is Node, "Packaged GLB load should produce a scene root")
+	assert_true(Dictionary(result.get("details", {})).has("vendor"), "Facade should expose vendor details for debugging")
+	var scene_root: Variant = result.get("scene_root", null)
+	if scene_root != null:
+		scene_root.free()
+
+func test_load_scene_from_external_copied_glb_fixture_uses_default_vendor_adapter() -> void:
+	var tool := AeroGLTFTool.new()
+	tool.clear_runtime_backend()
+	var external_asset_path := _copy_packaged_fixture_to_external_path()
+
+	var result: Dictionary = tool.load_scene_from_path(external_asset_path, {
+		"metadata": {
+			"source": "external-copy",
+		},
+	})
+
+	assert_true(result.get("ok", false), "Facade should load an external copied GLB fixture through the default vendor adapter")
+	if not bool(result.get("ok", false)):
+		return
+	assert_eq(result.get("asset_path", ""), external_asset_path, "Facade should preserve the external request path")
+	assert_eq(result.get("absolute_path", ""), external_asset_path, "External GLB should round-trip as an absolute path")
+	assert_eq(result.get("resource_path", ""), "", "External GLB should not claim a res:// resource path")
+	assert_eq(result.get("format", ""), "glb", "External fixture should resolve as GLB")
+	assert_true(result.get("scene_root", null) is Node, "External GLB load should produce a scene root")
+	assert_true(Dictionary(result.get("details", {})).has("vendor"), "Facade should expose vendor details for debugging")
+	var scene_root: Variant = result.get("scene_root", null)
+	if scene_root != null:
+		scene_root.free()
+
+func _copy_packaged_fixture_to_external_path() -> String:
+	_cleanup_external_fixture_dir()
+	var source_absolute := ProjectSettings.globalize_path(PACKAGED_FIXTURE_PATH)
+	var external_dir_absolute := ProjectSettings.globalize_path(EXTERNAL_FIXTURE_DIR)
+	var make_dir_error := DirAccess.make_dir_recursive_absolute(external_dir_absolute)
+	assert_eq(make_dir_error, OK, "Should create the external GLB fixture directory")
+
+	var destination_absolute := ProjectSettings.globalize_path(EXTERNAL_FIXTURE_PATH)
+	var copy_error := DirAccess.copy_absolute(source_absolute, destination_absolute)
+	assert_eq(copy_error, OK, "Should copy the packaged GLB fixture to an external absolute path")
+	assert_true(FileAccess.file_exists(destination_absolute), "Copied external GLB fixture should exist")
+	return destination_absolute
+
+func _cleanup_external_fixture_dir() -> void:
+	var external_dir_absolute := ProjectSettings.globalize_path(EXTERNAL_FIXTURE_DIR)
+	if not DirAccess.dir_exists_absolute(external_dir_absolute):
+		return
+	_delete_tree_absolute(external_dir_absolute)
+
+func _delete_tree_absolute(path: String) -> void:
+	var dir := DirAccess.open(path)
+	if dir == null:
+		DirAccess.remove_absolute(path)
+		return
+
+	dir.list_dir_begin()
+	while true:
+		var entry := dir.get_next()
+		if entry.is_empty():
+			break
+		if entry == "." or entry == "..":
+			continue
+		var child_path := path.path_join(entry)
+		if dir.current_is_dir():
+			_delete_tree_absolute(child_path)
+		else:
+			DirAccess.remove_absolute(child_path)
+	dir.list_dir_end()
+	DirAccess.remove_absolute(path)

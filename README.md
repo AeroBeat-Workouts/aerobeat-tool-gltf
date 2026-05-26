@@ -79,15 +79,16 @@ Failure:
 
 ## Runtime backend contract
 
-This tool expects `aerobeat-vendor-godot-gltf` to expose a runtime backend with:
+This tool ships a default runtime adapter, `AeroVendorGodotGLTFBackendAdapter`, that bridges the facade contract onto `aerobeat-vendor-godot-gltf`'s Godot-native runtime loader.
 
-- class name: `AeroVendorGodotGLTF` or `AeroVendorGodotGLTFManager`
-- script path fallback:
-  - `res://addons/aerobeat-vendor-godot-gltf/src/AeroVendorGodotGLTF.gd`
-  - `res://addons/aerobeat-vendor-godot-gltf/src/AeroVendorGodotGLTFManager.gd`
-- method: `load_scene_bundle(request: Dictionary) -> Dictionary`
+The adapter expects `aerobeat-vendor-godot-gltf` to provide:
 
-That backend method should own all engine/runtime-specific path resolution, importability checks, and GLTF/GLB loading mechanics.
+- loader script: `res://addons/aerobeat-vendor-godot-gltf/loaders/aero_godot_gltf_runtime_loader.gd`
+- vendor entry points:
+  - `load_source(source: Dictionary, flags := 0) -> Dictionary`
+  - `load_scene(source: Dictionary, flags := 0, scene_options := {}) -> Dictionary`
+
+That vendor runtime loader should own the engine/runtime-specific GLTF/GLB parsing and scene generation mechanics, while this tool facade keeps the higher-level request/result shape stable for consumers.
 
 ## What `environment-loader` should consume next
 
@@ -110,6 +111,7 @@ This repo uses the AeroBeat GodotEnv package convention.
 - GodotEnv cache: `.testbed/.addons/`
 - Hidden workbench project: `.testbed/project.godot`
 - Repo-local unit tests: `.testbed/tests/`
+- Packaged GLB proving fixture: `.testbed/fixtures/models/alien-planet.glb`
 
 ### Restore dev/test dependencies
 

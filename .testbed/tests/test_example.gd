@@ -17,7 +17,7 @@ func test_readme_describes_vendor_to_tool_to_consumer_stack() -> void:
 	assert_true(readme_text.contains("Consumer-facing **GLTF/GLB facade**"), "README should describe the repo as a GLTF/GLB facade")
 	assert_true(readme_text.contains("aerobeat-vendor-godot-gltf"), "README should point at the vendor runtime repo")
 	assert_true(readme_text.contains("aerobeat-environment-loader"), "README should describe the intended consumer seam")
-	assert_true(readme_text.contains("load_scene_bundle(request: Dictionary) -> Dictionary"), "README should document the vendor backend contract")
+	assert_true(readme_text.contains("load_scene(source: Dictionary, flags := 0, scene_options := {}) -> Dictionary"), "README should document the vendor backend contract")
 
 func test_plugin_cfg_matches_gltf_facade_identity() -> void:
 	var config := ConfigFile.new()
