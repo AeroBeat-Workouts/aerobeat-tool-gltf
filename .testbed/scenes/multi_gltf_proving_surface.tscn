@@ -1,0 +1,32 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/multi_gltf_proving_surface.gd" id="1_script"]
+
+[node name="MultiGLTFProvingSurface" type="Node3D"]
+script = ExtResource("1_script")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.819152, -0.40558, 0.40558, 0, 0.707107, 0.707107, -0.573576, -0.579228, 0.579228, 0, 4, 6)
+light_energy = 2.5
+shadow_enabled = true
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.978148, 0.207912, 0, -0.207912, 0.978148, 0, 3.5, 10)
+current = true
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="HUDMargin" type="MarginContainer" parent="CanvasLayer"]
+offset_right = 640.0
+offset_bottom = 280.0
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="HUDLabel" type="RichTextLabel" parent="CanvasLayer/HUDMargin"]
+custom_minimum_size = Vector2(600, 240)
+bbcode_enabled = true
+fit_content = true
+scroll_active = false
+text = "Loading tool GLTF proving surface..."
