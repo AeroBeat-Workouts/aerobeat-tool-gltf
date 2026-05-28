@@ -10,9 +10,13 @@ class FakeRuntimeBackend:
 	var last_scene_request: Dictionary = {}
 	var last_instance_request: Dictionary = {}
 	var last_collection_request: Dictionary = {}
+	var last_unload_result_request: Dictionary = {}
+	var unload_last_result_called := false
 	var _next_scene_result: Dictionary = {}
 	var _next_instance_result: Dictionary = {}
 	var _next_collection_result: Dictionary = {}
+	var _next_unload_result: Dictionary = {"ok": true, "unloaded": true, "freed_roots": 1}
+	var _next_unload_last_result: Dictionary = {"ok": true, "unloaded": true, "freed_roots": 1}
 
 	func _init(scene_result: Dictionary = {}, instance_result: Dictionary = {}, collection_result: Dictionary = {}) -> void:
 		_next_scene_result = scene_result
@@ -31,6 +35,14 @@ class FakeRuntimeBackend:
 		last_collection_request = request.duplicate(true)
 		return _next_collection_result
 
+	func unload_result(result: Dictionary) -> Dictionary:
+		last_unload_result_request = result.duplicate(true)
+		return _next_unload_result
+
+	func unload_last_result() -> Dictionary:
+		unload_last_result_called = true
+		return _next_unload_last_result
+
 func before_all() -> void:
 	assert_true(FileAccess.file_exists(PACKAGED_FIXTURE_PATH), "Packaged GLB fixture should exist in the tool testbed")
 
@@ -38,14 +50,14 @@ func after_each() -> void:
 	_cleanup_external_fixture_dir()
 
 func test_repo_identity_is_gltf_specific() -> void:
-	var tool := AeroGLTFTool.new()
-	assert_eq(AeroGLTFTool.VERSION, "0.2.0", "Facade version should reflect multi-scene + transform support")
+	var tool := AeroGLTFLoader.new()
+	assert_eq(AeroGLTFLoader.VERSION, "0.3.0", "Facade version should reflect renamed facade + source selection support")
 	assert_true(tool.supports_container("glb"), "Facade should explicitly support GLB")
 	assert_true(tool.supports_container(".gltf"), "Facade should normalize dotted GLTF format hints")
 	assert_false(tool.supports_container("png"), "Facade should reject unrelated container formats")
 
 func test_build_scene_request_normalizes_supported_input() -> void:
-	var tool := AeroGLTFTool.new()
+	var tool := AeroGLTFLoader.new()
 	var result: Dictionary = tool.build_scene_request(" user://packs/environment.GLb ", {
 		"metadata": {
 			"source": "test",
@@ -59,8 +71,19 @@ func test_build_scene_request_normalizes_supported_input() -> void:
 	assert_true(bool(request.get("instantiate", false)), "instantiate should default to true")
 	assert_eq(String(Dictionary(request.get("metadata", {})).get("source", "")), "test", "metadata should round-trip")
 
+func test_build_scene_request_accepts_url_sources() -> void:
+	var tool := AeroGLTFLoader.new()
+	var result: Dictionary = tool.build_scene_request_from_source({
+		"url": "https://example.com/models/environment.glb?cache=1",
+	})
+	assert_true(result.get("ok", false), "GLB URLs should normalize into a valid request")
+	var request := Dictionary(result.get("request", {}))
+	assert_eq(String(request.get("asset_path", "")), "https://example.com/models/environment.glb?cache=1")
+	assert_eq(String(Dictionary(request.get("source", {})).get("kind", "")), "url")
+	assert_eq(String(Dictionary(request.get("source", {})).get("format", "")), "glb")
+
 func test_build_scene_instance_request_normalizes_transform_vectors() -> void:
-	var tool := AeroGLTFTool.new()
+	var tool := AeroGLTFLoader.new()
 	var result: Dictionary = tool.build_scene_instance_request(PACKAGED_FIXTURE_PATH, {
 		"instance": {
 			"name": "PlanetLeft",
@@ -80,23 +103,23 @@ func test_build_scene_instance_request_normalizes_transform_vectors() -> void:
 	assert_eq(instance_transform.get("scale", Vector3.ONE), Vector3(0.5, 0.75, 1.25))
 
 func test_build_scene_request_rejects_unsupported_formats() -> void:
-	var tool := AeroGLTFTool.new()
+	var tool := AeroGLTFLoader.new()
 	var result: Dictionary = tool.build_scene_request("user://packs/environment.usdz")
 	assert_false(result.get("ok", true), "Unsupported formats should fail early")
-	assert_eq(String(result.get("error_code", "")), AeroGLTFTool.ERROR_UNSUPPORTED_FORMAT, "Unsupported formats should report the facade error code")
+	assert_eq(String(result.get("error_code", "")), AeroGLTFLoader.ERROR_UNSUPPORTED_FORMAT, "Unsupported formats should report the facade error code")
 
 func test_build_scene_collection_request_rejects_invalid_entries() -> void:
-	var tool := AeroGLTFTool.new()
+	var tool := AeroGLTFLoader.new()
 	var result: Dictionary = tool.build_scene_collection_request([
 		{"asset_path": PACKAGED_FIXTURE_PATH},
 		{"asset_path": ""},
 	])
 	assert_false(result.get("ok", true), "Scene collection validation should reject invalid entries")
-	assert_eq(String(result.get("error_code", "")), AeroGLTFTool.ERROR_INVALID_REQUEST)
+	assert_eq(String(result.get("error_code", "")), AeroGLTFLoader.ERROR_INVALID_REQUEST)
 	assert_eq(Array(Dictionary(result.get("details", {})).get("validation_errors", [])).size(), 1, "Validation details should identify the failing entry")
 
 func test_load_scene_delegates_to_runtime_backend_and_returns_scene_bundle() -> void:
-	var tool := AeroGLTFTool.new()
+	var tool := AeroGLTFLoader.new()
 	var scene_root := Node3D.new()
 	var runtime_backend = FakeRuntimeBackend.new({
 		"ok": true,
@@ -129,7 +152,7 @@ func test_load_scene_delegates_to_runtime_backend_and_returns_scene_bundle() -> 
 	scene_root.free()
 
 func test_load_scene_instance_delegates_transform_bundle_to_runtime_backend() -> void:
-	var tool := AeroGLTFTool.new()
+	var tool := AeroGLTFLoader.new()
 	var instance_root := Node3D.new()
 	instance_root.name = "PlanetAnchor"
 	var loaded_scene := Node3D.new()
@@ -179,7 +202,7 @@ func test_load_scene_instance_delegates_transform_bundle_to_runtime_backend() ->
 	instance_root.free()
 
 func test_load_scene_collection_delegates_multiple_instances_and_preserves_independence() -> void:
-	var tool := AeroGLTFTool.new()
+	var tool := AeroGLTFLoader.new()
 	var aggregate_root := Node3D.new()
 	aggregate_root.name = "CollectionRoot"
 	var left_root := Node3D.new()
@@ -247,8 +270,33 @@ func test_load_scene_collection_delegates_multiple_instances_and_preserves_indep
 	assert_eq(String(Dictionary(result.get("details", {})).get("root_name", "")), "CollectionRoot")
 	aggregate_root.free()
 
+func test_unload_result_delegates_to_runtime_backend() -> void:
+	var tool := AeroGLTFLoader.new()
+	var scene_root := Node3D.new()
+	var runtime_backend = FakeRuntimeBackend.new()
+	tool.set_runtime_backend(runtime_backend)
+
+	var result := tool.unload_result({
+		"scene_root": scene_root,
+		"details": {"vendor": {"scene": scene_root}},
+	})
+	assert_true(result.get("ok", false), "Facade should surface backend unload success")
+	assert_true(bool(result.get("unloaded", false)), "Facade should preserve unload state")
+	assert_eq(int(result.get("freed_roots", 0)), 1)
+	assert_same(Dictionary(runtime_backend.last_unload_result_request).get("scene_root", null), scene_root)
+	scene_root.free()
+
+func test_unload_last_result_delegates_to_runtime_backend() -> void:
+	var tool := AeroGLTFLoader.new()
+	var runtime_backend = FakeRuntimeBackend.new()
+	tool.set_runtime_backend(runtime_backend)
+
+	var result := tool.unload_last_result()
+	assert_true(result.get("ok", false), "Facade should surface backend unload-last success")
+	assert_true(runtime_backend.unload_last_result_called, "Facade should ask the backend to unload its last result")
+
 func test_load_scene_reports_backend_failure_cleanly() -> void:
-	var tool := AeroGLTFTool.new()
+	var tool := AeroGLTFLoader.new()
 	tool.set_runtime_backend(FakeRuntimeBackend.new({
 		"ok": false,
 		"error_code": "vendor_requires_imported_resource",
@@ -266,7 +314,7 @@ func test_load_scene_reports_backend_failure_cleanly() -> void:
 	assert_eq(String(Dictionary(result.get("details", {})).get("resource_path", "")), "", "Facade should preserve backend details for higher-level error mapping")
 
 func test_load_scene_from_packaged_glb_fixture_uses_default_vendor_adapter() -> void:
-	var tool := AeroGLTFTool.new()
+	var tool := AeroGLTFLoader.new()
 	tool.clear_runtime_backend()
 
 	var result: Dictionary = tool.load_scene_from_path(PACKAGED_FIXTURE_PATH)
@@ -284,7 +332,7 @@ func test_load_scene_from_packaged_glb_fixture_uses_default_vendor_adapter() -> 
 		scene_root.free()
 
 func test_load_scene_instance_from_packaged_glb_fixture_uses_default_vendor_adapter() -> void:
-	var tool := AeroGLTFTool.new()
+	var tool := AeroGLTFLoader.new()
 	tool.clear_runtime_backend()
 
 	var result: Dictionary = tool.load_scene_instance_from_path(PACKAGED_FIXTURE_PATH, {
@@ -311,7 +359,7 @@ func test_load_scene_instance_from_packaged_glb_fixture_uses_default_vendor_adap
 	instance_root.free()
 
 func test_load_scene_collection_from_packaged_glb_fixture_uses_default_vendor_adapter() -> void:
-	var tool := AeroGLTFTool.new()
+	var tool := AeroGLTFLoader.new()
 	tool.clear_runtime_backend()
 
 	var result: Dictionary = tool.load_scene_collection([
@@ -354,7 +402,7 @@ func test_load_scene_collection_from_packaged_glb_fixture_uses_default_vendor_ad
 	aggregate_root.free()
 
 func test_load_scene_from_external_copied_glb_fixture_uses_default_vendor_adapter() -> void:
-	var tool := AeroGLTFTool.new()
+	var tool := AeroGLTFLoader.new()
 	tool.clear_runtime_backend()
 	var external_asset_path := _copy_packaged_fixture_to_external_path()
 

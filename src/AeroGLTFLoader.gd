@@ -2,11 +2,12 @@
 ##
 ## This surface intentionally hides Godot runtime/import details behind the
 ## vendor repo so higher-level consumers can ask for a scene bundle without
-## owning `GLTFDocument`, importer, or resource-pipeline branching themselves.
-class_name AeroGLTFTool
+## owning `GLTFDocument`, importer, URL transport, or resource-pipeline
+## branching themselves.
+class_name AeroGLTFLoader
 extends RefCounted
 
-const VERSION: String = "0.2.0"
+const VERSION: String = "0.3.0"
 
 const ERROR_INVALID_REQUEST := "invalid_request"
 const ERROR_UNSUPPORTED_FORMAT := "unsupported_format"
@@ -28,8 +29,11 @@ const DEFAULT_BACKEND_SCRIPT_PATHS := [
 const BACKEND_METHOD_LOAD_SCENE_BUNDLE := "load_scene_bundle"
 const BACKEND_METHOD_LOAD_SCENE_INSTANCE_BUNDLE := "load_scene_instance_bundle"
 const BACKEND_METHOD_LOAD_SCENE_BUNDLES := "load_scene_bundles"
+const BACKEND_METHOD_UNLOAD_RESULT := "unload_result"
+const BACKEND_METHOD_UNLOAD_LAST_RESULT := "unload_last_result"
 
 var _runtime_backend: Variant = null
+var _last_result: Dictionary = {}
 
 func set_runtime_backend(runtime_backend: Variant) -> void:
 	_runtime_backend = runtime_backend
@@ -51,9 +55,12 @@ func get_backend_contract() -> Dictionary:
 			"scene": BACKEND_METHOD_LOAD_SCENE_BUNDLE,
 			"scene_instance": BACKEND_METHOD_LOAD_SCENE_INSTANCE_BUNDLE,
 			"scene_collection": BACKEND_METHOD_LOAD_SCENE_BUNDLES,
+			"unload_result": BACKEND_METHOD_UNLOAD_RESULT,
+			"unload_last_result": BACKEND_METHOD_UNLOAD_LAST_RESULT,
 		},
 		"request_keys": [
 			"asset_path",
+			"source",
 			"container",
 			"format",
 			"instantiate",
@@ -64,12 +71,13 @@ func get_backend_contract() -> Dictionary:
 		],
 		"result_keys": [
 			"ok",
+			"asset_path",
+			"source",
 			"scene_root",
 			"instance_root",
 			"loaded_scene_root",
 			"instances",
 			"packed_scene",
-			"asset_path",
 			"absolute_path",
 			"resource_path",
 			"format",
@@ -101,6 +109,11 @@ func build_scene_request(asset_path: String, options: Dictionary = {}) -> Dictio
 	request["asset_path"] = asset_path
 	return normalize_scene_request(request)
 
+func build_scene_request_from_source(source: Dictionary, options: Dictionary = {}) -> Dictionary:
+	var request := options.duplicate(true)
+	request["source"] = source.duplicate(true)
+	return normalize_scene_request(request)
+
 func build_scene_instance_request(asset_path: String, options: Dictionary = {}) -> Dictionary:
 	var request := options.duplicate(true)
 	request["asset_path"] = asset_path
@@ -112,29 +125,20 @@ func build_scene_collection_request(instances: Array, options: Dictionary = {}) 
 	return normalize_scene_collection_request(request)
 
 func normalize_scene_request(request: Dictionary) -> Dictionary:
-	var asset_path := String(request.get("asset_path", "")).strip_edges()
-	if asset_path.is_empty():
-		return _failure({}, ERROR_INVALID_REQUEST, "GLTF/GLB requests require a non-empty asset_path.")
+	var normalized_source_result := _normalize_source_request(
+		_dictionary_or_empty(request.get("source", {})),
+		String(request.get("asset_path", "")).strip_edges(),
+		String(request.get("container", request.get("format", request.get("format_hint", "")))).strip_edges()
+	)
+	if not bool(normalized_source_result.get("ok", false)):
+		return normalized_source_result
 
-	var container := _normalize_container(String(
-		request.get("container", request.get("format", request.get("format_hint", "")))
-	))
-	if container.is_empty():
-		container = _container_from_asset_path(asset_path)
-	if not supports_container(container):
-		return _failure(
-			{"asset_path": asset_path},
-			ERROR_UNSUPPORTED_FORMAT,
-			"Unsupported GLTF container for path '%s'. Supported containers: %s" % [
-				asset_path,
-				", ".join(PackedStringArray(SUPPORTED_CONTAINERS)),
-			]
-		)
-
+	var normalized_source: Dictionary = _dictionary_or_empty(normalized_source_result.get("source", {}))
 	var normalized_request := {
-		"asset_path": asset_path,
-		"container": container,
-		"format": container,
+		"asset_path": String(normalized_source_result.get("asset_path", "")),
+		"source": normalized_source,
+		"container": String(normalized_source.get("format", "")),
+		"format": String(normalized_source.get("format", "")),
 		"instantiate": bool(request.get("instantiate", true)),
 		"metadata": _dictionary_or_empty(request.get("metadata", {})),
 	}
@@ -235,6 +239,12 @@ func load_scene_from_path(asset_path: String, options: Dictionary = {}) -> Dicti
 		return normalized_result
 	return load_scene(Dictionary(normalized_result.get("request", {})))
 
+func load_scene_from_source(source: Dictionary, options: Dictionary = {}) -> Dictionary:
+	var normalized_result := build_scene_request_from_source(source, options)
+	if not normalized_result.get("ok", false):
+		return normalized_result
+	return load_scene(Dictionary(normalized_result.get("request", {})))
+
 func load_scene_instance_from_path(asset_path: String, options: Dictionary = {}) -> Dictionary:
 	var normalized_result := build_scene_instance_request(asset_path, options)
 	if not normalized_result.get("ok", false):
@@ -260,7 +270,8 @@ func load_scene(request: Dictionary) -> Dictionary:
 	)
 	if not bool(runtime_result.get("ok", false)):
 		return runtime_result
-	return _normalize_scene_bundle_result(runtime_result, normalized_request)
+	_last_result = _normalize_scene_bundle_result(runtime_result, normalized_request)
+	return _last_result
 
 func load_scene_instance(request: Dictionary) -> Dictionary:
 	var normalized_result := normalize_scene_instance_request(request)
@@ -275,7 +286,8 @@ func load_scene_instance(request: Dictionary) -> Dictionary:
 	)
 	if not bool(runtime_result.get("ok", false)):
 		return runtime_result
-	return _normalize_scene_instance_bundle_result(runtime_result, normalized_request)
+	_last_result = _normalize_scene_instance_bundle_result(runtime_result, normalized_request)
+	return _last_result
 
 func load_scene_collection_request(request: Dictionary) -> Dictionary:
 	var normalized_result := normalize_scene_collection_request(request)
@@ -290,7 +302,31 @@ func load_scene_collection_request(request: Dictionary) -> Dictionary:
 	)
 	if not bool(runtime_result.get("ok", false)):
 		return runtime_result
-	return _normalize_scene_collection_result(runtime_result, normalized_request)
+	_last_result = _normalize_scene_collection_result(runtime_result, normalized_request)
+	return _last_result
+
+func unload_result(result: Dictionary) -> Dictionary:
+	var runtime_backend: Variant = _resolve_runtime_backend()
+	if runtime_backend != null and runtime_backend.has_method(BACKEND_METHOD_UNLOAD_RESULT):
+		var backend_result: Variant = runtime_backend.call(BACKEND_METHOD_UNLOAD_RESULT, result.duplicate(true))
+		if backend_result is Dictionary:
+			_last_result = {}
+			return Dictionary(backend_result)
+	return _unload_locally(result)
+
+func unload_last_result() -> Dictionary:
+	var runtime_backend: Variant = _resolve_runtime_backend()
+	if runtime_backend != null and runtime_backend.has_method(BACKEND_METHOD_UNLOAD_LAST_RESULT):
+		var backend_result: Variant = runtime_backend.call(BACKEND_METHOD_UNLOAD_LAST_RESULT)
+		if backend_result is Dictionary:
+			_last_result = {}
+			return Dictionary(backend_result)
+	var local_result := _unload_locally(_last_result)
+	_last_result = {}
+	return local_result
+
+func get_last_result() -> Dictionary:
+	return _last_result.duplicate(true)
 
 func _call_backend_dictionary(method_name: String, normalized_request: Dictionary, unavailable_message: String) -> Dictionary:
 	var runtime_backend: Variant = _resolve_runtime_backend()
@@ -330,6 +366,7 @@ func _normalize_scene_bundle_result(runtime_result: Dictionary, normalized_reque
 	return {
 		"ok": true,
 		"asset_path": String(runtime_result.get("asset_path", normalized_request.get("asset_path", ""))),
+		"source": _dictionary_or_empty(runtime_result.get("source", normalized_request.get("source", {}))),
 		"absolute_path": String(runtime_result.get("absolute_path", "")),
 		"resource_path": String(runtime_result.get("resource_path", "")),
 		"format": String(runtime_result.get("format", normalized_request.get("format", ""))),
@@ -346,6 +383,7 @@ func _normalize_scene_instance_bundle_result(runtime_result: Dictionary, normali
 	return {
 		"ok": true,
 		"asset_path": String(runtime_result.get("asset_path", normalized_request.get("asset_path", ""))),
+		"source": _dictionary_or_empty(runtime_result.get("source", normalized_request.get("source", {}))),
 		"absolute_path": String(runtime_result.get("absolute_path", "")),
 		"resource_path": String(runtime_result.get("resource_path", "")),
 		"format": String(runtime_result.get("format", normalized_request.get("format", ""))),
@@ -372,6 +410,7 @@ func _normalize_scene_collection_result(runtime_result: Dictionary, normalized_r
 			requested_instance = Dictionary(request_instances[index])
 		normalized_instances.append({
 			"asset_path": String(runtime_instance.get("asset_path", requested_instance.get("asset_path", ""))),
+			"source": _dictionary_or_empty(runtime_instance.get("source", requested_instance.get("source", {}))),
 			"absolute_path": String(runtime_instance.get("absolute_path", "")),
 			"resource_path": String(runtime_instance.get("resource_path", "")),
 			"format": String(runtime_instance.get("format", requested_instance.get("format", ""))),
@@ -428,8 +467,62 @@ func _instantiate_script(script_path: String) -> Variant:
 		return null
 	return script_resource.new()
 
+func _normalize_source_request(source: Dictionary, asset_path: String, container_hint: String) -> Dictionary:
+	var normalized_source := source.duplicate(true)
+	var hinted_container := _normalize_container(container_hint)
+	var path := String(normalized_source.get("path", asset_path)).strip_edges()
+	var url := String(normalized_source.get("url", asset_path if _is_http_url(asset_path) else "")).strip_edges()
+	var source_kind := String(normalized_source.get("kind", "")).strip_edges().to_lower()
+	if source_kind.is_empty():
+		source_kind = "url" if (not url.is_empty() or _is_http_url(path)) else "file"
+
+	if source_kind == "url":
+		if url.is_empty():
+			url = path
+		path = url
+	else:
+		url = ""
+
+	var container := hinted_container
+	if container.is_empty():
+		container = _container_from_asset_path(url if source_kind == "url" else path)
+	if not supports_container(container):
+		return _failure(
+			{"asset_path": asset_path, "source": source.duplicate(true)},
+			ERROR_UNSUPPORTED_FORMAT,
+			"Unsupported GLTF container for source '%s'. Supported containers: %s" % [
+				(url if source_kind == "url" else path),
+				", ".join(PackedStringArray(SUPPORTED_CONTAINERS)),
+			]
+		)
+
+	var normalized_request_source := {
+		"kind": source_kind,
+		"path": path if source_kind != "url" else "",
+		"url": url if source_kind == "url" else "",
+		"format": container,
+		"metadata": _dictionary_or_empty(normalized_source.get("metadata", {})),
+	}
+	var normalized_asset_path := url if source_kind == "url" else path
+	if normalized_asset_path.is_empty():
+		return _failure({}, ERROR_INVALID_REQUEST, "GLTF/GLB requests require a non-empty asset path or source.")
+
+	return {
+		"ok": true,
+		"asset_path": normalized_asset_path,
+		"source": normalized_request_source,
+	}
+
 func _container_from_asset_path(asset_path: String) -> String:
-	var extension := asset_path.get_extension().strip_edges().to_lower()
+	var path_without_fragment := asset_path
+	var fragment_index := path_without_fragment.find("#")
+	if fragment_index != -1:
+		path_without_fragment = path_without_fragment.substr(0, fragment_index)
+	var path_without_query := path_without_fragment
+	var query_index := path_without_query.find("?")
+	if query_index != -1:
+		path_without_query = path_without_query.substr(0, query_index)
+	var extension := path_without_query.get_extension().strip_edges().to_lower()
 	if extension == "glb":
 		return "glb"
 	if extension == "gltf":
@@ -438,6 +531,10 @@ func _container_from_asset_path(asset_path: String) -> String:
 
 func _normalize_container(container: String) -> String:
 	return container.strip_edges().trim_prefix(".").to_lower()
+
+func _is_http_url(value: String) -> bool:
+	var normalized := value.strip_edges().to_lower()
+	return normalized.begins_with("http://") or normalized.begins_with("https://")
 
 func _dictionary_or_empty(value: Variant) -> Dictionary:
 	if value is Dictionary:
@@ -464,6 +561,20 @@ func _variant_to_vector3(value: Variant, default_value: Vector3) -> Vector3:
 			float(dictionary_value.get("z", default_value.z))
 		)
 	return default_value
+
+func _unload_locally(result: Dictionary) -> Dictionary:
+	var scene_root := result.get("scene_root", result.get("instance_root", null)) as Node
+	var freed_roots := 0
+	if scene_root != null and is_instance_valid(scene_root):
+		if scene_root.get_parent() != null:
+			scene_root.get_parent().remove_child(scene_root)
+		scene_root.queue_free()
+		freed_roots += 1
+	return {
+		"ok": true,
+		"unloaded": freed_roots > 0,
+		"freed_roots": freed_roots,
+	}
 
 func _failure(request: Dictionary, error_code: String, message: String, recoverable: bool = true, details: Dictionary = {}) -> Dictionary:
 	return {

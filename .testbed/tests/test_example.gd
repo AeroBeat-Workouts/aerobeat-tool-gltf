@@ -30,7 +30,7 @@ func test_plugin_cfg_matches_gltf_facade_identity() -> void:
 		EXPECTED_PLUGIN_DESCRIPTION,
 		"plugin.cfg description should stay aligned with the GLTF facade contract"
 	)
-	assert_eq(config.get_value("plugin", "version", ""), "0.2.0", "plugin version should reflect multi-instance + transform support")
+	assert_eq(config.get_value("plugin", "version", ""), "0.3.0", "plugin version should reflect renamed facade + source selection + unload support")
 
 func test_addons_manifest_includes_vendor_runtime_dependency() -> void:
 	var manifest_text := _read_repo_file(ADDONS_MANIFEST_PATH)

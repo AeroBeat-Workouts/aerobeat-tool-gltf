@@ -22,8 +22,8 @@ The current truthful slice stays consumer-facing while now covering single-scene
 
 ### Main facade
 
-- Script: `src/AeroGLTFTool.gd`
-- Class: `AeroGLTFTool`
+- Script: `src/AeroGLTFLoader.gd`
+- Class: `AeroGLTFLoader`
 
 ### Consumer-facing methods
 
@@ -32,6 +32,7 @@ The current truthful slice stays consumer-facing while now covering single-scene
 - `get_default_transform() -> Dictionary`
 - `get_default_instance_options() -> Dictionary`
 - `build_scene_request(asset_path: String, options: Dictionary = {}) -> Dictionary`
+- `build_scene_request_from_source(source: Dictionary, options: Dictionary = {}) -> Dictionary`
 - `build_scene_instance_request(asset_path: String, options: Dictionary = {}) -> Dictionary`
 - `build_scene_collection_request(instances: Array, options: Dictionary = {}) -> Dictionary`
 - `normalize_scene_request(request: Dictionary) -> Dictionary`
@@ -40,8 +41,11 @@ The current truthful slice stays consumer-facing while now covering single-scene
 - `normalize_transform(transform_config: Dictionary) -> Dictionary`
 - `normalize_instance_options(instance_options: Dictionary) -> Dictionary`
 - `load_scene_from_path(asset_path: String, options: Dictionary = {}) -> Dictionary`
+- `load_scene_from_source(source: Dictionary, options: Dictionary = {}) -> Dictionary`
 - `load_scene_instance_from_path(asset_path: String, options: Dictionary = {}) -> Dictionary`
 - `load_scene_collection(instances: Array, options: Dictionary = {}) -> Dictionary`
+- `unload_result(result: Dictionary) -> Dictionary`
+- `unload_last_result() -> Dictionary`
 - `load_scene(request: Dictionary) -> Dictionary`
 - `load_scene_instance(request: Dictionary) -> Dictionary`
 - `load_scene_collection_request(request: Dictionary) -> Dictionary`
@@ -210,7 +214,9 @@ This tool ships a default runtime adapter, `AeroVendorGodotGLTFBackendAdapter`, 
 
 The adapter expects `aerobeat-vendor-godot-gltf` to provide:
 
-- loader script: `res://addons/aerobeat-vendor-godot-gltf/loaders/aero_godot_gltf_runtime_loader.gd`
+Tool-side source selection stays higher-level: callers can keep using `asset_path` for packaged/external files, or pass a normalized `source` dictionary with either `path` or `url` when they need explicit local-device or remote selection without teaching consumers the vendor runtime transport rules.
+
+- loader script: `res://addons/aerobeat-vendor-godot-gltf/src/aero_godot_gltf_runtime_loader.gd`
 - vendor entry points:
   - `load_source(source: Dictionary, flags := 0) -> Dictionary`
   - `load_scene(source: Dictionary, flags := 0, scene_options := {}) -> Dictionary`
@@ -224,7 +230,7 @@ That vendor runtime loader should own the engine/runtime-specific GLTF/GLB parsi
 Single scene:
 
 ```gdscript
-var tool := AeroGLTFTool.new()
+var tool := AeroGLTFLoader.new()
 var result := tool.load_scene_from_path("res://fixtures/models/alien-planet.glb")
 if result.get("ok", false):
   add_child(result["scene_root"])
@@ -277,7 +283,7 @@ if result.get("ok", false):
 
 The next integration seam for `aerobeat-environment-loader` is still:
 
-1. replace direct vendor/runtime assumptions with `AeroGLTFTool` calls
+1. replace direct vendor/runtime assumptions with `AeroGLTFLoader` calls
 2. keep `environment-loader` responsible for:
    - environment request validation/orchestration
    - attaching the returned `scene_root` / `instance_root` to `_world_root`
@@ -344,6 +350,14 @@ Open the hidden testbed project and run `.testbed/scenes/multi_gltf_proving_surf
 - the proving surface stays tool-facing rather than talking to the vendor loader directly
 
 Keyboard controls inside the proving surface:
+
+- `F1` / `F2` / `F3` — load the packaged project path, copied external device path, or URL source
+- `L` — reload the current source mode
+- `U` — explicitly unload the current result
+- `W` / `A` / `S` / `D` — fly the camera
+- `Q` / `E` — move the camera down/up
+- hold `Shift` — move the camera faster
+- hold left mouse and drag — rotate the fly camera
 
 - `1` / `2` — select the left or right instance
 - `Tab` — cycle the selected instance
