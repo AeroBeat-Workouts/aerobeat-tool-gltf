@@ -2,7 +2,7 @@ extends Node3D
 
 const TOOL_CANDIDATE_PATHS := [
 	"res://src/AeroGLTFTool.gd",
-	"res://addons/aerobeat-tool-gltf/src/AeroGLTFTool.gd",
+	"res://addons/aerobeat-tool-gltf-loader/src/AeroGLTFTool.gd",
 ]
 const FIXTURE_PATH := "res://fixtures/models/alien-planet.glb"
 const POSITION_PRESETS := [

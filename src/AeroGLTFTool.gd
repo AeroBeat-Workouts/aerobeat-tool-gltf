@@ -21,7 +21,7 @@ const DEFAULT_BACKEND_CLASS_NAMES := [
 ]
 const DEFAULT_BACKEND_SCRIPT_PATHS := [
 	"res://src/AeroVendorGodotGLTFBackendAdapter.gd",
-	"res://addons/aerobeat-tool-gltf/src/AeroVendorGodotGLTFBackendAdapter.gd",
+	"res://addons/aerobeat-tool-gltf-loader/src/AeroVendorGodotGLTFBackendAdapter.gd",
 	"res://addons/aerobeat-vendor-godot-gltf/src/AeroVendorGodotGLTF.gd",
 	"res://addons/aerobeat-vendor-godot-gltf/src/AeroVendorGodotGLTFManager.gd",
 ]

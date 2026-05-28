@@ -5,7 +5,7 @@ Consumer-facing **GLTF/GLB facade** for AeroBeat repos that need 3D scene loadin
 This repo sits in the middle of the current stack:
 
 - `aerobeat-vendor-godot-gltf` owns Godot/runtime-specific scene loading details.
-- `aerobeat-tool-gltf` owns the stable consumer-facing GLTF/GLB abstraction.
+- `aerobeat-tool-gltf-loader` owns the stable consumer-facing GLTF/GLB abstraction.
 - consumers like `aerobeat-environment-loader` should depend on this facade instead of talking to `GLTFDocument`, imported-resource constraints, or vendor-specific classes directly.
 
 ## Current contract slice
