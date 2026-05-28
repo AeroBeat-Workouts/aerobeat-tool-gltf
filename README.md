@@ -1,4 +1,4 @@
-# AeroBeat Tool GLTF
+# AeroBeat Tool GLTF Loader
 
 Consumer-facing **GLTF/GLB facade** for AeroBeat repos that need 3D scene loading without directly owning Godot runtime/importer details.
 
