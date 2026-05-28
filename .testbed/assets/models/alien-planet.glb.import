@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://g268byf34u1c"
-path="res://.godot/imported/alien-planet.glb-b88209e523dd0feb94702e21687319b9.scn"
+path="res://.godot/imported/alien-planet.glb-47160efcdb50af6802577ac3a3a46d49.scn"
 
 [deps]
 
-source_file="res://fixtures/models/alien-planet.glb"
-dest_files=["res://.godot/imported/alien-planet.glb-b88209e523dd0feb94702e21687319b9.scn"]
+source_file="res://assets/models/alien-planet.glb"
+dest_files=["res://.godot/imported/alien-planet.glb-47160efcdb50af6802577ac3a3a46d49.scn"]
 
 [params]
 

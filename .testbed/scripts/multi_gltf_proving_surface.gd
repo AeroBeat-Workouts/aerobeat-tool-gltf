@@ -4,7 +4,7 @@ const TOOL_CANDIDATE_PATHS := [
 	"res://addons/aerobeat-tool-gltf-loader/src/AeroGLTFLoader.gd",
 	"res://../src/AeroGLTFLoader.gd",
 ]
-const PACKAGED_FIXTURE_PATH := "res://fixtures/models/alien-planet.glb"
+const PACKAGED_ASSET_PATH := "res://assets/models/alien-planet.glb"
 const DEFAULT_REMOTE_URL := "http://127.0.0.1:8123/alien-planet.glb"
 const EXTERNAL_FIXTURE_DIRECTORY_NAME := "aerobeat-tool-gltf-loader-testbed"
 const EXTERNAL_FIXTURE_FILE_NAME := "alien-planet-external.glb"
@@ -40,7 +40,7 @@ var _drag_rotating := false
 var _camera_pitch_degrees := -12.0
 var _camera_yaw_degrees := 0.0
 
-@export var packaged_source_path := PACKAGED_FIXTURE_PATH
+@export var packaged_source_path := PACKAGED_ASSET_PATH
 @export var external_source_path := ""
 @export var remote_source_url := DEFAULT_REMOTE_URL
 
@@ -276,7 +276,7 @@ func _make_external_fixture_copy() -> String:
 	var target_directory := temp_root.path_join(EXTERNAL_FIXTURE_DIRECTORY_NAME)
 	DirAccess.make_dir_recursive_absolute(target_directory)
 	var target_path := target_directory.path_join(EXTERNAL_FIXTURE_FILE_NAME)
-	DirAccess.copy_absolute(ProjectSettings.globalize_path(PACKAGED_FIXTURE_PATH), target_path)
+	DirAccess.copy_absolute(ProjectSettings.globalize_path(PACKAGED_ASSET_PATH), target_path)
 	return target_path
 
 func _sync_camera_rotation() -> void:
