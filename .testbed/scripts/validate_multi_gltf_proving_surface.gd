@@ -1,6 +1,8 @@
 extends SceneTree
 
 const SCENE_PATH := "res://scenes/multi_gltf_proving_surface.tscn"
+const PACKAGED_FIXTURE_PATH := "res://assets/models/alien-planet.glb"
+const URL_FIXTURE := "https://example.com/models/test.glb"
 
 func _init() -> void:
 	call_deferred("_run")
@@ -38,10 +40,44 @@ func _run() -> void:
 	if left_anchor.get_child_count() != 1 or right_anchor.get_child_count() != 1:
 		_fail("Expected each instance anchor to own one loaded GLTF child")
 		return
+	var left_position := left_anchor.position
+	var right_position := right_anchor.position
 
-	print("[validate-tool-multi-gltf-proving-surface] OK left=%s right=%s" % [
-		var_to_str(left_anchor.position),
-		var_to_str(right_anchor.position),
+	var source_input := scene_root.get_node_or_null("CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox/SourceInput") as LineEdit
+	var browse_button := scene_root.get_node_or_null("CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox/TypedSourceButtons/BrowseButton") as Button
+	var file_dialog := scene_root.get_node_or_null("CanvasLayer/SourceFileDialog") as FileDialog
+	if source_input == null or browse_button == null or file_dialog == null:
+		_fail("Expected source input, browse button, and file dialog proving controls to exist")
+		return
+	if file_dialog.access != FileDialog.ACCESS_FILESYSTEM:
+		_fail("Expected proving surface file picker to browse the local filesystem")
+		return
+
+	var packaged_source: Dictionary = scene_root.call("_manual_source_from_text", PACKAGED_FIXTURE_PATH)
+	if packaged_source.get("path", "") != PACKAGED_FIXTURE_PATH or packaged_source.get("format", "") != "glb":
+		_fail("Expected typed packaged source parsing to preserve res:// GLB paths")
+		return
+
+	var url_source: Dictionary = scene_root.call("_manual_source_from_text", URL_FIXTURE)
+	if url_source.get("url", "") != URL_FIXTURE or url_source.get("format", "") != "glb":
+		_fail("Expected typed URL source parsing to preserve remote GLB URLs")
+		return
+
+	var absolute_path := ProjectSettings.globalize_path(PACKAGED_FIXTURE_PATH)
+	source_input.text = absolute_path
+	scene_root.call("_on_apply_source_button_pressed")
+	await process_frame
+	await process_frame
+
+	aggregate_root = scene_root.get_node_or_null("ToolGLTFMultiFixtureRoot") as Node3D
+	if aggregate_root == null or aggregate_root.get_child_count() != 2:
+		_fail("Expected typed absolute-path load to rebuild the aggregate root")
+		return
+
+	print("[validate-tool-multi-gltf-proving-surface] OK left=%s right=%s typed=%s" % [
+		var_to_str(left_position),
+		var_to_str(right_position),
+		absolute_path,
 	])
 	quit(0)
 

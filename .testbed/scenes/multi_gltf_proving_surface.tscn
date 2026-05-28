@@ -16,18 +16,127 @@ current = true
 
 [node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=1596268093]
 
-[node name="HUDMargin" type="MarginContainer" parent="CanvasLayer" unique_id=160533624]
-offset_right = 640.0
-offset_bottom = 280.0
+[node name="OverlayMargin" type="MarginContainer" parent="CanvasLayer" unique_id=271006001]
+offset_right = 1280.0
+offset_bottom = 360.0
 theme_override_constants/margin_left = 16
 theme_override_constants/margin_top = 16
 theme_override_constants/margin_right = 16
 theme_override_constants/margin_bottom = 16
 
-[node name="HUDLabel" type="RichTextLabel" parent="CanvasLayer/HUDMargin" unique_id=769542556]
-custom_minimum_size = Vector2(600, 240)
+[node name="OverlayRow" type="HBoxContainer" parent="CanvasLayer/OverlayMargin" unique_id=884523501]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="HUDPanel" type="PanelContainer" parent="CanvasLayer/OverlayMargin/OverlayRow" unique_id=94930031]
+custom_minimum_size = Vector2(620, 320)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="HUDMargin" type="MarginContainer" parent="CanvasLayer/OverlayMargin/OverlayRow/HUDPanel" unique_id=160533624]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="HUDLabel" type="RichTextLabel" parent="CanvasLayer/OverlayMargin/OverlayRow/HUDPanel/HUDMargin" unique_id=769542556]
+custom_minimum_size = Vector2(596, 296)
 layout_mode = 2
 bbcode_enabled = true
 text = "Loading tool GLTF proving surface..."
 fit_content = true
 scroll_active = false
+
+[node name="ControlsPanel" type="PanelContainer" parent="CanvasLayer/OverlayMargin/OverlayRow" unique_id=108246573]
+custom_minimum_size = Vector2(420, 320)
+layout_mode = 2
+
+[node name="ControlsMargin" type="MarginContainer" parent="CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel" unique_id=505602911]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="ControlsVBox" type="VBoxContainer" parent="CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin" unique_id=350674091]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ControlsTitle" type="Label" parent="CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox" unique_id=572538420]
+layout_mode = 2
+text = "Source controls"
+
+[node name="CurrentModeRow" type="HBoxContainer" parent="CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox" unique_id=9882823]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CurrentModeLabel" type="Label" parent="CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox/CurrentModeRow" unique_id=381209048]
+layout_mode = 2
+text = "Current mode:"
+
+[node name="CurrentModeValue" type="Label" parent="CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox/CurrentModeRow" unique_id=779920985]
+layout_mode = 2
+text = "packaged"
+
+[node name="PresetButtons" type="HBoxContainer" parent="CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox" unique_id=146518682]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="PackagedButton" type="Button" parent="CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox/PresetButtons" unique_id=195963717]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+text = "Load Packaged"
+
+[node name="ExternalButton" type="Button" parent="CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox/PresetButtons" unique_id=125060822]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+text = "Load External"
+
+[node name="URLButton" type="Button" parent="CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox/PresetButtons" unique_id=37419934]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+text = "Load URL"
+
+[node name="SourceHelp" type="Label" parent="CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox" unique_id=152037195]
+layout_mode = 2
+text = "Paste any res:// path, absolute local path, or web URL."
+autowrap_mode = 3
+
+[node name="SourceInput" type="LineEdit" parent="CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox" unique_id=485350074]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+placeholder_text = "res://..., /absolute/path/model.glb, or https://..."
+clear_button_enabled = true
+
+[node name="TypedSourceButtons" type="HBoxContainer" parent="CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox" unique_id=635049622]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="BrowseButton" type="Button" parent="CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox/TypedSourceButtons" unique_id=948449995]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+text = "Browse..."
+
+[node name="ApplySourceButton" type="Button" parent="CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox/TypedSourceButtons" unique_id=797436184]
+custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
+text = "Load Typed Source"
+
+[node name="ControlsFootnote" type="Label" parent="CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox" unique_id=467954567]
+layout_mode = 2
+text = "Tip: F1/F2/F3/L/U and the fly-camera controls still work."
+autowrap_mode = 3
+
+[node name="SourceFileDialog" type="FileDialog" parent="CanvasLayer" unique_id=275643298]
+title = "Choose a GLTF/GLB source"
+size = Vector2i(900, 620)
+
+[connection signal="pressed" from="CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox/PresetButtons/PackagedButton" to="." method="_on_packaged_button_pressed"]
+[connection signal="pressed" from="CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox/PresetButtons/ExternalButton" to="." method="_on_external_button_pressed"]
+[connection signal="pressed" from="CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox/PresetButtons/URLButton" to="." method="_on_url_button_pressed"]
+[connection signal="text_changed" from="CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox/SourceInput" to="." method="_on_source_input_text_changed"]
+[connection signal="text_submitted" from="CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox/SourceInput" to="." method="_on_source_input_text_submitted"]
+[connection signal="pressed" from="CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox/TypedSourceButtons/BrowseButton" to="." method="_on_browse_button_pressed"]
+[connection signal="pressed" from="CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox/TypedSourceButtons/ApplySourceButton" to="." method="_on_apply_source_button_pressed"]
+[connection signal="file_selected" from="CanvasLayer/SourceFileDialog" to="." method="_on_source_file_dialog_file_selected"]

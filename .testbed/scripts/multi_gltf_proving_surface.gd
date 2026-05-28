@@ -26,6 +26,7 @@ const SCALE_PRESETS := [
 const CAMERA_MOVE_SPEED := 8.0
 const CAMERA_FAST_MULTIPLIER := 2.0
 const CAMERA_LOOK_SENSITIVITY := 0.2
+const SOURCE_MODE_CUSTOM := "custom"
 
 var _tool: Variant = null
 var _aggregate_root: Node3D = null
@@ -45,7 +46,10 @@ var _camera_yaw_degrees := 0.0
 @export var remote_source_url := DEFAULT_REMOTE_URL
 
 @onready var _camera: Camera3D = $Camera3D
-@onready var _hud_label: RichTextLabel = $CanvasLayer/HUDMargin/HUDLabel
+@onready var _hud_label: RichTextLabel = $CanvasLayer/OverlayMargin/OverlayRow/HUDPanel/HUDMargin/HUDLabel
+@onready var _mode_value_label: Label = $CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox/CurrentModeRow/CurrentModeValue
+@onready var _source_input: LineEdit = $CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox/SourceInput
+@onready var _file_dialog: FileDialog = $CanvasLayer/SourceFileDialog
 
 func _ready() -> void:
 	_tool = _create_tool()
@@ -56,7 +60,9 @@ func _ready() -> void:
 		return
 	if external_source_path.is_empty():
 		external_source_path = _make_external_fixture_copy()
+	_configure_file_dialog()
 	_sync_camera_rotation()
+	_sync_source_controls()
 	_load_source_mode(_current_source_mode)
 
 func _process(delta: float) -> void:
@@ -126,11 +132,18 @@ func _unhandled_input(event: InputEvent) -> void:
 			_unload_current_result()
 
 func _load_source_mode(source_mode: String) -> void:
+	var source := _source_for_mode(source_mode)
+	if source.is_empty():
+		_update_hud("Source is empty")
+		return
+	_load_source_dictionary(source, source_mode)
+
+func _load_source_dictionary(source: Dictionary, source_mode: String) -> void:
 	_current_source_mode = source_mode
+	_sync_source_controls()
 	_unload_current_result(false)
 	_instance_roots.clear()
 
-	var source := _source_for_mode(source_mode)
 	var result: Dictionary = _tool.load_scene_collection([
 		{
 			"source": source,
@@ -216,21 +229,99 @@ func _select_instance(index: int) -> void:
 func _source_for_mode(source_mode: String) -> Dictionary:
 	match source_mode:
 		"external":
-			return {"path": external_source_path, "format": "glb"}
+			return _manual_source_from_text(external_source_path)
 		"url":
-			return {"url": remote_source_url, "format": "glb"}
+			return _manual_source_from_text(remote_source_url)
+		SOURCE_MODE_CUSTOM:
+			return _manual_source_from_text(_source_input.text if _source_input != null else "")
 		_:
-			return {"path": packaged_source_path, "format": "glb"}
+			return _manual_source_from_text(packaged_source_path)
+
+func _manual_source_from_text(raw_source: String) -> Dictionary:
+	var trimmed := raw_source.strip_edges()
+	if trimmed.is_empty():
+		return {}
+	var source := {
+		"format": _infer_format_from_source(trimmed),
+	}
+	if _is_http_url(trimmed):
+		source["url"] = trimmed
+	else:
+		source["path"] = trimmed
+	return source
+
+func _infer_format_from_source(raw_source: String) -> String:
+	var trimmed := raw_source.strip_edges()
+	if trimmed.to_lower().ends_with(".gltf"):
+		return "gltf"
+	if trimmed.to_lower().ends_with(".glb"):
+		return "glb"
+	return ""
+
+func _sync_source_controls() -> void:
+	if _mode_value_label != null:
+		_mode_value_label.text = _current_source_mode
+	if _source_input != null and not _source_input.has_focus():
+		_source_input.text = _display_source_for_mode(_current_source_mode)
+
+func _display_source_for_mode(source_mode: String) -> String:
+	match source_mode:
+		"external":
+			return external_source_path
+		"url":
+			return remote_source_url
+		SOURCE_MODE_CUSTOM:
+			return _source_input.text if _source_input != null else ""
+		_:
+			return packaged_source_path
+
+func _configure_file_dialog() -> void:
+	if _file_dialog == null:
+		return
+	_file_dialog.access = FileDialog.ACCESS_FILESYSTEM
+	_file_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	_file_dialog.use_native_dialog = true
+	_file_dialog.filters = PackedStringArray(["*.glb ; GLB files", "*.gltf ; GLTF files"])
+
+func _on_packaged_button_pressed() -> void:
+	_load_source_mode("packaged")
+
+func _on_external_button_pressed() -> void:
+	_load_source_mode("external")
+
+func _on_url_button_pressed() -> void:
+	_load_source_mode("url")
+
+func _on_apply_source_button_pressed() -> void:
+	_load_source_mode(SOURCE_MODE_CUSTOM)
+
+func _on_source_input_text_submitted(_new_text: String) -> void:
+	_load_source_mode(SOURCE_MODE_CUSTOM)
+
+func _on_source_input_text_changed(_new_text: String) -> void:
+	if _mode_value_label != null and _current_source_mode != SOURCE_MODE_CUSTOM:
+		_mode_value_label.text = "%s → custom draft" % _current_source_mode
+
+func _on_browse_button_pressed() -> void:
+	if _file_dialog == null:
+		return
+	_file_dialog.popup_centered_ratio(0.75)
+
+func _on_source_file_dialog_file_selected(path: String) -> void:
+	if _source_input != null:
+		_source_input.text = path
+	_load_source_mode(SOURCE_MODE_CUSTOM)
 
 func _update_hud(status: String = "Ready") -> void:
 	if _hud_label == null:
 		return
 	var snapshots := _snapshot_lines()
-	_hud_label.text = "[b]Tool GLTF proving surface[/b]\nSource mode: %s\nPackaged: %s\nExternal: %s\nURL: %s\n\nSource controls\n- [b]F1[/b]/[b]F2[/b]/[b]F3[/b] load packaged, external, or URL source\n- [b]L[/b] reload current source\n- [b]U[/b] unload current result\n\nTransform controls\n- [b]1[/b]/[b]2[/b] select instance\n- [b]Tab[/b] cycle selected instance\n- [b]P[/b] cycle position preset\n- [b]R[/b] cycle rotation preset\n- [b]S[/b] cycle scale preset\n- [b]V[/b] print transform snapshot\n\nFly camera\n- [b]WASD[/b] move horizontally\n- [b]Q[/b]/[b]E[/b] move down/up\n- hold [b]Shift[/b] to move faster\n- hold left mouse and drag to rotate\n\nStatus: %s\nSelected instance: %s\nCamera: pos=%s pitch=%.2f yaw=%.2f\n\nSnapshots\n%s" % [
+	_hud_label.text = "[b]Tool GLTF proving surface[/b]\nSource mode: %s\nPackaged: %s\nExternal: %s\nURL: %s\nTyped/Browsed: %s\n\nSource controls\n- buttons or [b]F1[/b]/[b]F2[/b]/[b]F3[/b] load packaged, external, or URL source\n- type/paste any [b]res://[/b], absolute path, or web URL then press [b]Load Typed Source[/b] or Enter\n- [b]Browse...[/b] opens a filesystem picker for arbitrary local GLB/GLTF files\n- [b]L[/b] reload current source\n- [b]U[/b] unload current result\n\nTransform controls\n- [b]1[/b]/[b]2[/b] select instance\n- [b]Tab[/b] cycle selected instance\n- [b]P[/b] cycle position preset\n- [b]R[/b] cycle rotation preset\n- [b]S[/b] cycle scale preset\n- [b]V[/b] print transform snapshot\n\nFly camera\n- [b]WASD[/b] move horizontally\n- [b]Q[/b]/[b]E[/b] move down/up\n- hold [b]Shift[/b] to move faster\n- hold left mouse and drag to rotate\n\nStatus: %s\nSelected instance: %s\nCamera: pos=%s pitch=%.2f yaw=%.2f\n\nSnapshots\n%s" % [
 		_current_source_mode,
 		packaged_source_path,
 		external_source_path,
 		remote_source_url,
+		_source_input.text if _source_input != null else "",
 		status,
 		_selected_instance_index + 1,
 		_var_to_pretty(_camera.global_position) if _camera != null else "<none>",
@@ -283,6 +374,10 @@ func _sync_camera_rotation() -> void:
 	if _camera == null:
 		return
 	_camera.rotation_degrees = Vector3(_camera_pitch_degrees, _camera_yaw_degrees, 0.0)
+
+func _is_http_url(value: String) -> bool:
+	var lowered := value.strip_edges().to_lower()
+	return lowered.begins_with("http://") or lowered.begins_with("https://")
 
 func _var_to_pretty(value: Variant) -> String:
 	return var_to_str(value).replace("\n", "")

@@ -67,7 +67,7 @@ The current truthful slice stays consumer-facing while now covering single-scene
 
 ```gdscript
 {
-  "asset_path": "res://fixtures/models/alien-planet.glb",
+  "asset_path": "res://assets/models/alien-planet.glb",
   "container": "glb",
   "format": "glb",
   "instantiate": true,
@@ -91,7 +91,7 @@ The current truthful slice stays consumer-facing while now covering single-scene
 {
   "instances": [
     {
-      "asset_path": "res://fixtures/models/alien-planet.glb",
+      "asset_path": "res://assets/models/alien-planet.glb",
       "container": "glb",
       "format": "glb",
       "instantiate": true,
@@ -231,7 +231,7 @@ Single scene:
 
 ```gdscript
 var tool := AeroGLTFLoader.new()
-var result := tool.load_scene_from_path("res://fixtures/models/alien-planet.glb")
+var result := tool.load_scene_from_path("res://assets/models/alien-planet.glb")
 if result.get("ok", false):
   add_child(result["scene_root"])
 ```
@@ -239,7 +239,7 @@ if result.get("ok", false):
 Transformable single instance:
 
 ```gdscript
-var result := tool.load_scene_instance_from_path("res://fixtures/models/alien-planet.glb", {
+var result := tool.load_scene_instance_from_path("res://assets/models/alien-planet.glb", {
   "instance": {
     "name": "PlanetAnchor",
     "transform": {
@@ -258,7 +258,7 @@ Multi-instance collection:
 ```gdscript
 var result := tool.load_scene_collection([
   {
-    "asset_path": "res://fixtures/models/alien-planet.glb",
+    "asset_path": "res://assets/models/alien-planet.glb",
     "instance": {
       "name": "PlanetLeft",
       "transform": {"position": [-2, 0, 0]}
@@ -300,7 +300,7 @@ This repo uses the AeroBeat GodotEnv package convention.
 - GodotEnv cache: `.testbed/.addons/`
 - Hidden workbench project: `.testbed/project.godot`
 - Repo-local unit tests: `.testbed/tests/`
-- Packaged GLB proving fixture: `.testbed/fixtures/models/alien-planet.glb`
+- Packaged GLB proving fixture: `.testbed/assets/models/alien-planet.glb`
 - Tool GLTF multi-instance proving surface scene: `.testbed/scenes/multi_gltf_proving_surface.tscn`
 - Tool GLTF multi-instance proving surface script: `.testbed/scripts/multi_gltf_proving_surface.gd`
 

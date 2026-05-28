@@ -1,6 +1,6 @@
 extends GutTest
 
-const PACKAGED_FIXTURE_PATH := "res://fixtures/models/alien-planet.glb"
+const PACKAGED_FIXTURE_PATH := "res://assets/models/alien-planet.glb"
 const EXTERNAL_FIXTURE_DIR := "user://gltf-fixtures"
 const EXTERNAL_FIXTURE_PATH := "user://gltf-fixtures/alien-planet.glb"
 
