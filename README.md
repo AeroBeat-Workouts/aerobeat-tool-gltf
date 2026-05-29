@@ -363,5 +363,5 @@ Keyboard controls inside the proving surface:
 - `Tab` — cycle the selected instance
 - `P` — cycle parent position preset
 - `R` — cycle parent rotation preset
-- `S` — cycle parent scale preset
+- `C` — cycle parent scale preset
 - `V` — print a transform snapshot to the Godot output log

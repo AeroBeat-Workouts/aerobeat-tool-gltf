@@ -3,6 +3,24 @@ extends SceneTree
 const SCENE_PATH := "res://scenes/multi_gltf_proving_surface.tscn"
 const PACKAGED_FIXTURE_PATH := "res://assets/models/alien-planet.glb"
 const URL_FIXTURE := "https://example.com/models/test.glb"
+const OVERLAY_PASSTHROUGH_PATHS := [
+	"CanvasLayer/OverlayMargin",
+	"CanvasLayer/OverlayMargin/OverlayRow",
+	"CanvasLayer/OverlayMargin/OverlayRow/HUDPanel",
+	"CanvasLayer/OverlayMargin/OverlayRow/HUDPanel/HUDMargin",
+	"CanvasLayer/OverlayMargin/OverlayRow/HUDPanel/HUDMargin/HUDLabel",
+	"CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel",
+	"CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin",
+	"CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox",
+	"CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox/ControlsTitle",
+	"CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox/CurrentModeRow",
+	"CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox/CurrentModeRow/CurrentModeLabel",
+	"CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox/CurrentModeRow/CurrentModeValue",
+	"CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox/PresetButtons",
+	"CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox/SourceHelp",
+	"CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox/TypedSourceButtons",
+	"CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox/ControlsFootnote",
+]
 
 func _init() -> void:
 	call_deferred("_run")
@@ -52,10 +70,32 @@ func _run() -> void:
 	if file_dialog.access != FileDialog.ACCESS_FILESYSTEM:
 		_fail("Expected proving surface file picker to browse the local filesystem")
 		return
+	if source_input.mouse_filter == Control.MOUSE_FILTER_IGNORE or browse_button.mouse_filter == Control.MOUSE_FILTER_IGNORE:
+		_fail("Expected interactive source controls to keep handling mouse input")
+		return
+	for control_path in OVERLAY_PASSTHROUGH_PATHS:
+		var control := scene_root.get_node_or_null(control_path) as Control
+		if control == null:
+			_fail("Expected passthrough control to exist: %s" % control_path)
+			return
+		if control.mouse_filter != Control.MOUSE_FILTER_IGNORE:
+			_fail("Expected passthrough control to ignore mouse input: %s" % control_path)
+			return
 
 	var packaged_source: Dictionary = scene_root.call("_manual_source_from_text", PACKAGED_FIXTURE_PATH)
 	if packaged_source.get("path", "") != PACKAGED_FIXTURE_PATH or packaged_source.get("format", "") != "glb":
 		_fail("Expected typed packaged source parsing to preserve res:// GLB paths")
+		return
+
+	var scale_before_c := left_anchor.scale
+	scene_root.call("_unhandled_input", _key_event(KEY_C))
+	if left_anchor.scale == scale_before_c:
+		_fail("Expected C hotkey to cycle the selected instance scale preset")
+		return
+	var scale_after_c := left_anchor.scale
+	scene_root.call("_unhandled_input", _key_event(KEY_S))
+	if left_anchor.scale != scale_after_c:
+		_fail("Expected S key to stop cycling scale presets so it remains available for fly-camera movement")
 		return
 
 	var url_source: Dictionary = scene_root.call("_manual_source_from_text", URL_FIXTURE)
@@ -80,6 +120,13 @@ func _run() -> void:
 		absolute_path,
 	])
 	quit(0)
+
+func _key_event(keycode: Key) -> InputEventKey:
+	var event := InputEventKey.new()
+	event.keycode = keycode
+	event.pressed = true
+	event.echo = false
+	return event
 
 func _fail(message: String) -> void:
 	push_error("[validate-tool-multi-gltf-proving-surface] %s" % message)

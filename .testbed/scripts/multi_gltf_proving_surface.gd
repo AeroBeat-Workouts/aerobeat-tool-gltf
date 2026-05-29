@@ -27,6 +27,24 @@ const CAMERA_MOVE_SPEED := 8.0
 const CAMERA_FAST_MULTIPLIER := 2.0
 const CAMERA_LOOK_SENSITIVITY := 0.2
 const SOURCE_MODE_CUSTOM := "custom"
+const OVERLAY_PASSTHROUGH_PATHS := [
+	"CanvasLayer/OverlayMargin",
+	"CanvasLayer/OverlayMargin/OverlayRow",
+	"CanvasLayer/OverlayMargin/OverlayRow/HUDPanel",
+	"CanvasLayer/OverlayMargin/OverlayRow/HUDPanel/HUDMargin",
+	"CanvasLayer/OverlayMargin/OverlayRow/HUDPanel/HUDMargin/HUDLabel",
+	"CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel",
+	"CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin",
+	"CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox",
+	"CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox/ControlsTitle",
+	"CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox/CurrentModeRow",
+	"CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox/CurrentModeRow/CurrentModeLabel",
+	"CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox/CurrentModeRow/CurrentModeValue",
+	"CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox/PresetButtons",
+	"CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox/SourceHelp",
+	"CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox/TypedSourceButtons",
+	"CanvasLayer/OverlayMargin/OverlayRow/ControlsPanel/ControlsMargin/ControlsVBox/ControlsFootnote",
+]
 
 var _tool: Variant = null
 var _aggregate_root: Node3D = null
@@ -61,6 +79,7 @@ func _ready() -> void:
 	if external_source_path.is_empty():
 		external_source_path = _make_external_fixture_copy()
 	_configure_file_dialog()
+	_configure_overlay_input_passthrough()
 	_sync_camera_rotation()
 	_sync_source_controls()
 	_load_source_mode(_current_source_mode)
@@ -116,7 +135,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			_cycle_dimension("position")
 		KEY_R:
 			_cycle_dimension("rotation")
-		KEY_S:
+		KEY_C:
 			_cycle_dimension("scale")
 		KEY_V:
 			_print_snapshot()
@@ -283,6 +302,12 @@ func _configure_file_dialog() -> void:
 	_file_dialog.use_native_dialog = true
 	_file_dialog.filters = PackedStringArray(["*.glb ; GLB files", "*.gltf ; GLTF files"])
 
+func _configure_overlay_input_passthrough() -> void:
+	for control_path in OVERLAY_PASSTHROUGH_PATHS:
+		var control := get_node_or_null(control_path) as Control
+		if control != null:
+			control.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
 func _on_packaged_button_pressed() -> void:
 	_load_source_mode("packaged")
 
@@ -316,7 +341,7 @@ func _update_hud(status: String = "Ready") -> void:
 	if _hud_label == null:
 		return
 	var snapshots := _snapshot_lines()
-	_hud_label.text = "[b]Tool GLTF proving surface[/b]\nSource mode: %s\nPackaged: %s\nExternal: %s\nURL: %s\nTyped/Browsed: %s\n\nSource controls\n- buttons or [b]F1[/b]/[b]F2[/b]/[b]F3[/b] load packaged, external, or URL source\n- type/paste any [b]res://[/b], absolute path, or web URL then press [b]Load Typed Source[/b] or Enter\n- [b]Browse...[/b] opens a filesystem picker for arbitrary local GLB/GLTF files\n- [b]L[/b] reload current source\n- [b]U[/b] unload current result\n\nTransform controls\n- [b]1[/b]/[b]2[/b] select instance\n- [b]Tab[/b] cycle selected instance\n- [b]P[/b] cycle position preset\n- [b]R[/b] cycle rotation preset\n- [b]S[/b] cycle scale preset\n- [b]V[/b] print transform snapshot\n\nFly camera\n- [b]WASD[/b] move horizontally\n- [b]Q[/b]/[b]E[/b] move down/up\n- hold [b]Shift[/b] to move faster\n- hold left mouse and drag to rotate\n\nStatus: %s\nSelected instance: %s\nCamera: pos=%s pitch=%.2f yaw=%.2f\n\nSnapshots\n%s" % [
+	_hud_label.text = "[b]Tool GLTF proving surface[/b]\nSource mode: %s\nPackaged: %s\nExternal: %s\nURL: %s\nTyped/Browsed: %s\n\nSource controls\n- buttons or [b]F1[/b]/[b]F2[/b]/[b]F3[/b] load packaged, external, or URL source\n- type/paste any [b]res://[/b], absolute path, or web URL then press [b]Load Typed Source[/b] or Enter\n- [b]Browse...[/b] opens a filesystem picker for arbitrary local GLB/GLTF files\n- [b]L[/b] reload current source\n- [b]U[/b] unload current result\n\nTransform controls\n- [b]1[/b]/[b]2[/b] select instance\n- [b]Tab[/b] cycle selected instance\n- [b]P[/b] cycle position preset\n- [b]R[/b] cycle rotation preset\n- [b]C[/b] cycle scale preset\n- [b]V[/b] print transform snapshot\n\nFly camera\n- [b]WASD[/b] move horizontally\n- [b]Q[/b]/[b]E[/b] move down/up\n- hold [b]Shift[/b] to move faster\n- hold left mouse and drag to rotate\n\nStatus: %s\nSelected instance: %s\nCamera: pos=%s pitch=%.2f yaw=%.2f\n\nSnapshots\n%s" % [
 		_current_source_mode,
 		packaged_source_path,
 		external_source_path,
