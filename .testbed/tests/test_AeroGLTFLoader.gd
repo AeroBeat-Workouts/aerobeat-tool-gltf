@@ -56,6 +56,13 @@ func test_repo_identity_is_gltf_specific() -> void:
 	assert_true(tool.supports_container(".gltf"), "Facade should normalize dotted GLTF format hints")
 	assert_false(tool.supports_container("png"), "Facade should reject unrelated container formats")
 
+func test_default_backend_adapter_checks_flattened_vendor_runtime_path() -> void:
+	var adapter_source := FileAccess.get_file_as_string("res://../src/AeroVendorGodotGLTFBackendAdapter.gd")
+	assert_true(
+		adapter_source.contains("res://addons/aerobeat-vendor-godot-gltf/aero_godot_gltf_runtime_loader.gd"),
+		"Backend adapter should probe the flattened installed vendor runtime loader path"
+	)
+
 func test_build_scene_request_normalizes_supported_input() -> void:
 	var tool := AeroGLTFLoader.new()
 	var result: Dictionary = tool.build_scene_request(" user://packs/environment.GLb ", {

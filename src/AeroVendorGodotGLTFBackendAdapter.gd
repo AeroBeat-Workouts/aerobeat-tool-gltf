@@ -3,7 +3,9 @@ extends RefCounted
 
 const _RUNTIME_LOADER_SCRIPT_PATHS := [
 	"res://addons/aerobeat-vendor-godot-gltf/loaders/aero_godot_gltf_runtime_loader.gd",
+	"res://addons/aerobeat-vendor-godot-gltf/aero_godot_gltf_runtime_loader.gd",
 	"res://addons/aerobeat-vendor-godot-gltf/src/aero_godot_gltf_runtime_loader.gd",
+	"res://../aerobeat-vendor-godot-gltf/aero_godot_gltf_runtime_loader.gd",
 	"res://../aerobeat-vendor-godot-gltf/src/aero_godot_gltf_runtime_loader.gd",
 ]
 
