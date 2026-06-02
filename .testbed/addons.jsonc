@@ -1,26 +1,26 @@
 {
   "$schema": "https://chickensoft.games/schemas/addons.schema.json",
   "addons": {
-    // Install this repo into the hidden workbench the same way a consumer does.
     "aerobeat-tool-gltf-loader": {
       "url": "..",
       "source": "symlink",
       "subfolder": "/"
     },
-    // Shared tool-side contract baseline.
-    // `main` is intentional until aerobeat-tool-core starts tagging releases.
     "aerobeat-tool-core": {
-      "url": "git@github.com:AeroBeat-Workouts/aerobeat-tool-core.git",
-      "checkout": "main",
-      "subfolder": "/"
+      "url": "../../aerobeat-tool-core",
+      "subfolder": "/",
+      "source": "symlink"
     },
-    // Runtime GLTF/GLB loading lives in the vendor repo; this tool facade sits above it.
     "aerobeat-vendor-godot-gltf": {
-      "url": "git@github.com:AeroBeat-Workouts/aerobeat-vendor-godot-gltf.git",
-      "checkout": "main",
-      "subfolder": "/"
+      "url": "../../aerobeat-vendor-godot-gltf",
+      "subfolder": "/",
+      "source": "symlink"
     },
-    // GUT drives the repo-local test suite inside the hidden testbed/workbench.
+    "aerobeat-tool-headless-manager": {
+      "url": "../../aerobeat-tool-headless-manager",
+      "subfolder": "/",
+      "source": "symlink"
+    },
     "gut": {
       "url": "git@github.com:bitwes/Gut.git",
       "checkout": "main",
