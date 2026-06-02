@@ -36,5 +36,5 @@ func test_addons_manifest_includes_vendor_runtime_dependency() -> void:
 	var manifest_text := _read_repo_file(ADDONS_MANIFEST_PATH)
 	assert_true(manifest_text.contains('"aerobeat-tool-core"'), "addons manifest should keep aerobeat-tool-core")
 	assert_true(manifest_text.contains('"aerobeat-vendor-godot-gltf"'), "addons manifest should include the vendor GLTF runtime addon")
-	assert_true(manifest_text.contains('"gut"'), "addons manifest should keep gut for repo-local tests")
+	assert_true(manifest_text.contains('"aerobeat-vendor-godot-unit-test"'), "addons manifest should keep gut for repo-local tests")
 	assert_false(manifest_text.contains('"aerobeat-core"'), "addons manifest should not reintroduce stale aerobeat-core drift")
